@@ -27,7 +27,6 @@ export class RatesController {
         }
 
         const base = rates[0].baseCurrency.code;
-        const base = rates[0].baseCurrency.code;
         const date = rates[0].fetchedAt.toISOString().split('T')[0];
         const ratesMap: Record<string, number> = {};
 
