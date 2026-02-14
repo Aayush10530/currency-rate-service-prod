@@ -36,7 +36,7 @@ import { HealthModule } from './health/health.module';
         password: configService.get<string>('DB_PASS'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: configService.get<string>('NODE_ENV') !== 'production',
+        synchronize: true,
       }),
     }),
     ExchangeProviderModule,
