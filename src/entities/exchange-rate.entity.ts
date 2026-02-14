@@ -3,7 +3,7 @@ import { Currency } from './currency.entity';
 
 @Entity('exchange_rate')
 @Unique(['baseCurrency', 'targetCurrency', 'fetchedAt'])
-@Index(['baseCurrency', 'targetCurrency', 'fetchedAt']) // Composite index for efficient querying
+@Index(['baseCurrency', 'targetCurrency', 'fetchedAt'])
 export class ExchangeRate {
     @PrimaryGeneratedColumn('uuid')
     id: string;

@@ -21,7 +21,6 @@ export class RatesService {
         private readonly exchangeProviderService: ExchangeProviderService,
     ) { }
 
-    @Cron('0 0 */3 * * *') // Runs every 3 hours
     async handleCron() {
         try {
             this.logger.log('Running scheduled rate fetch...');
@@ -43,13 +42,11 @@ export class RatesService {
             const rates = data.rates;
             const fetchedAt = new Date();
 
-            // Ensure base currency exists and get entity
             const baseCurrencyEntity = await this.ensureCurrencyExists(base);
 
             const exchangeRates: ExchangeRate[] = [];
 
             for (const [target, rate] of Object.entries(rates)) {
-                // Ensure target currency exists and get entity
                 const targetCurrencyEntity = await this.ensureCurrencyExists(target);
 
                 const exchangeRate = this.exchangeRateRepository.create({
@@ -61,7 +58,6 @@ export class RatesService {
                 exchangeRates.push(exchangeRate);
             }
 
-            // Bulk insert for performance
             await this.exchangeRateRepository.save(exchangeRates);
             this.logger.log(`Saved ${exchangeRates.length} exchange rates for base ${base}`);
         } catch (error) {
@@ -81,14 +77,12 @@ export class RatesService {
     async getLatestRates(dto: GetLatestRatesDto): Promise<ExchangeRate[]> {
         const base = dto.base || 'USD';
 
-        // 1. Find the latest fetch timestamp for this base currency
-        // 1. Find the latest fetch timestamp for this base currency
         const latestEntry = await this.exchangeRateRepository.findOne({
             where: {
                 baseCurrency: { code: base }
             },
             relations: {
-                baseCurrency: true // Explicitly join baseCurrency for filtering
+                baseCurrency: true
             },
             order: {
                 fetchedAt: 'DESC'
@@ -99,7 +93,6 @@ export class RatesService {
             return [];
         }
 
-        // 2. Fetch all rates with that timestamp
         return this.exchangeRateRepository.find({
             where: {
                 fetchedAt: latestEntry.fetchedAt,
