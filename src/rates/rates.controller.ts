@@ -17,11 +17,39 @@ export class RatesController {
 
     @Get('latest')
     async getLatestRates(@Query() dto: GetLatestRatesDto) {
-        return this.ratesService.getLatestRates(dto);
+        const rates = await this.ratesService.getLatestRates(dto);
+        if (!rates.length) {
+            return {
+                base: dto.base || 'USD',
+                date: null,
+                rates: {}
+            };
+        }
+
+        const base = rates[0].baseCurrency.code;
+        const date = rates[0].fetchedAt.toISOString().split('T')[0]; // YYYY-MM-DD
+        const ratesMap: Record<string, number> = {};
+
+        rates.forEach(r => {
+            ratesMap[r.targetCurrency.code] = parseFloat(r.rate);
+        });
+
+        return {
+            base,
+            date,
+            rates: ratesMap
+        };
     }
 
     @Get('average')
     async getAverageRate(@Query() dto: GetAverageRateDto) {
-        return this.ratesService.getAverageRate(dto);
+        const result = await this.ratesService.getAverageRate(dto);
+        return {
+            base: dto.base || 'USD',
+            target: dto.target,
+            period: dto.period,
+            average_rate: result.averageRate,
+            data_points: result.count
+        };
     }
 }

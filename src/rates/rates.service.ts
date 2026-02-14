@@ -81,20 +81,40 @@ export class RatesService {
     async getLatestRates(dto: GetLatestRatesDto): Promise<ExchangeRate[]> {
         const base = dto.base || 'USD';
 
-        // Use DISTINCT ON to get the latest rate per target currency
-        // Need to join relations to filter by code
-        return this.exchangeRateRepository
-            .createQueryBuilder('rate')
-            .innerJoinAndSelect('rate.baseCurrency', 'base')
-            .innerJoinAndSelect('rate.targetCurrency', 'target')
-            .distinctOn(['target.code'])
-            .where('base.code = :base', { base })
-            .orderBy('target.code')
-            .addOrderBy('rate.fetchedAt', 'DESC')
-            .getMany();
+        // 1. Find the latest fetch timestamp for this base currency
+        // 1. Find the latest fetch timestamp for this base currency
+        const latestEntry = await this.exchangeRateRepository.findOne({
+            where: {
+                baseCurrency: { code: base }
+            },
+            relations: {
+                baseCurrency: true // Explicitly join baseCurrency for filtering
+            },
+            order: {
+                fetchedAt: 'DESC'
+            }
+        });
+
+        if (!latestEntry) {
+            return [];
+        }
+
+        // 2. Fetch all rates with that timestamp
+        return this.exchangeRateRepository.find({
+            where: {
+                fetchedAt: latestEntry.fetchedAt,
+                baseCurrency: { code: base },
+            },
+            relations: ['baseCurrency', 'targetCurrency'],
+            order: {
+                targetCurrency: {
+                    code: 'ASC',
+                },
+            },
+        });
     }
 
-    async getAverageRate(dto: GetAverageRateDto): Promise<{ averageRate: number | null }> {
+    async getAverageRate(dto: GetAverageRateDto): Promise<{ averageRate: number | null; count: number }> {
         const { base, target, period } = dto;
         const hours = parseInt(period.replace('h', ''), 10);
         const since = new Date();
@@ -105,12 +125,18 @@ export class RatesService {
             .innerJoin('rate.baseCurrency', 'base')
             .innerJoin('rate.targetCurrency', 'target')
             .select('AVG(rate.rate)', 'average')
+            .addSelect('COUNT(rate.id)', 'count')
             .where('base.code = :base', { base })
             .andWhere('target.code = :target', { target })
             .andWhere('rate.fetchedAt >= :since', { since })
             .getRawOne();
 
         const avg = result?.average ?? null;
-        return { averageRate: avg ? Number(avg) : null };
+        const count = result?.count ?? 0;
+
+        return {
+            averageRate: avg ? Number(avg) : null,
+            count: Number(count)
+        };
     }
 }
